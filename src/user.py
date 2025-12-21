@@ -10,6 +10,8 @@ class User:
         birthday (datetime.date): The user's birthday
         pets (list): List of pet dictionaries with 'name' and 'filename' keys
         current_pet (str | None): Currently active pet's filename (e.g., 'fluffy_cat.json')
+        games_played (int): Total number of games played
+        games_won (int): Total number of games won
     """
 
     def __init__(self, username, birthday=None):
@@ -43,6 +45,29 @@ class User:
         # Each pet entry is a dict: {'name': str, 'filename': str}
         self.pets = []  # List of pet dictionaries
         self.current_pet = None  # Currently active pet filename
+
+        # Game stats
+        self.games_played = 0
+        self.games_won = 0
+
+
+    def update_game_stats(self, win_status):
+        """
+        Update the user's game statistics after playing a game.
+
+        Args:
+            win_status (bool): True if the user won the game, False otherwise
+        """
+        self.games_played += 1
+        if win_status:
+            self.games_won += 1
+
+
+    def get_win_rate(self):
+        """Return win rate of games"""
+        if self.games_played == 0:
+            return 0
+        return self.games_won / self.games_played
 
     def add_pet(self, pet_filename, pet_name=None):
         """
@@ -164,7 +189,9 @@ class User:
             'longest_login_streak': self.longest_login_streak,
             'current_login_streak': self.current_login_streak,
             'pets': self.pets,
-            'current_pet': self.current_pet
+            'current_pet': self.current_pet,
+            'games_played': self.games_played,
+            'games_won': self.games_won
         }
 
     @classmethod
@@ -227,6 +254,13 @@ class User:
 
         if 'current_login_streak' in data:
             user.current_login_streak = data['current_login_streak']
+
+        # Load game stats (with backward compatibility)
+        if 'games_played' in data:
+            user.games_played = data['games_played']
+
+        if 'games_won' in data:
+            user.games_won = data['games_won']
 
         return user
 

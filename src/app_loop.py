@@ -6,7 +6,8 @@ from src.pet import Pet
 from src.user import User
 from src.config import FOODS, MAX_STAT, PETS_PATH
 from src.data_handler import save_pet, load_pet, save_user
-from src.ui import display_action_menu, display_food_menu, display_pet_status
+from src.ui import display_action_menu, display_food_menu, display_pet_status, display_game_menu
+from src.games.which_way import play_which_way
 
 
 def initialize_pet(user, pet_filename=None):
@@ -194,8 +195,46 @@ def handle_user_display(user):
     print(f"Total pets owned: {len(user.pets)}")
     pet_names = [pet['name'] for pet in user.pets]
     print(f"Pets: {', '.join(pet_names) if pet_names else 'None'}")
+    print(f"Games played: {user.games_played}")
+    print(f"Games won: {user.games_won}")
+    print(f"Win rate: {user.get_win_rate():.1f}%")
     print("-" * 50)
     return True
+
+
+def handle_play_games(pet, user):
+    """
+    Handle the 'Play games' action.
+    
+    Args:
+        pet (Pet): The current pet
+        user (User): The current user
+        
+    Returns:
+        bool: True if continuing game loop, False to exit
+    """
+    if pet.sleep:
+        print(f"{pet.name} is sleeping and can't play games!")
+        return True
+
+    while True:
+        display_game_menu()
+        
+        try:
+            choice = int(input("\nWhich game would you like to play? ").strip())
+        except ValueError:
+            print("\n>> Please enter a valid number.")
+            continue
+        
+        if choice == 1:
+            win_status = play_which_way(pet)
+            user.update_game_stats(win_status)
+        elif choice == 2:
+            print("Memory game coming soon!")
+        elif choice == 3:
+            return True  # Back to main menu
+        else:
+            print("\n>> Invalid choice!")
 
 
 def run_game_loop(user, pet, pet_filename):
@@ -232,7 +271,7 @@ def run_game_loop(user, pet, pet_filename):
         elif user_input == 4:
             handle_wake_up(pet)
         elif user_input == 5:
-            print("Games coming soon!")
+            handle_play_games(pet, user)
         elif user_input == 6:
             handle_user_display(user)
         elif user_input == 7:
