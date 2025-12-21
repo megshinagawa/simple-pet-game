@@ -53,6 +53,5 @@ def display_game_menu():
     print("=" * 50)
     print("1. Which Way?")
     print("2. Memory")
-    print("3. Coming soon!")
-    print("4. Back to main menu")
+    print("3. Back to main menu")
     print("=" * 50)

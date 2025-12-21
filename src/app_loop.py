@@ -232,8 +232,6 @@ def handle_play_games(pet, user):
         elif choice == 2:
             print("Memory game coming soon!")
         elif choice == 3:
-            print("Coming soon!")
-        elif choice == 4:
             return True  # Back to main menu
         else:
             print("\n>> Invalid choice!")
