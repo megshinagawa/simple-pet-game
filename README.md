@@ -37,3 +37,7 @@ A command-line virtual pet game where you care for your pet by feeding it and ma
 ### Requirements
 
 - Python 3.7 or higher
+
+## Future Ideas
+
+- Coins (currency) from focusing with pet that can be used to buy upgraded care items like food

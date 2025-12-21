@@ -18,23 +18,26 @@ class Pet:
     This class represents a pet with basic needs including fullness and energy.
     The pet has a birthday, ages over time, and requires feeding and sleep
     to maintain its stats. Fullness decreases and energy decreases over time.
+    When energy hits 0%, the pet automatically sleeps until energy reaches 10%.
 
     Attributes:
         name (str): The pet's name
         birthday (datetime.date): The date the pet was created
         age (int): The pet's age in days
         sleep (bool): Whether the pet is currently sleeping
+        auto_sleep (bool): Whether the sleep was triggered automatically (from 0% energy)
         sleep_start (datetime.datetime | None): When the pet started sleeping
         last_update (datetime.datetime): When stats were last updated
         fullness (int): Fullness level from 0 (starving) to 100 (full)
         energy (int): Energy level from 0 (exhausted) to 100 (fully energized)
     """
 
-    def __init__(self, name):
+    def __init__(self, name, owner=None):
         """
         Initializes Pet instance
         Args:
             name (str): pet name
+            owner (str, optional): username of the pet's owner
         """
         if not isinstance(name, str):
             raise TypeError("Pet name must be a string")
@@ -44,6 +47,9 @@ class Pet:
             raise ValueError("Pet name cannot exceed 50 characters")
         self.name = name.strip()
 
+        # owner info
+        self.owner = owner
+
         # life info
         self.birthday = datetime.datetime.now().date()
         self.age = 0
@@ -51,6 +57,7 @@ class Pet:
         # sleep
         self.sleep = False
         self.sleep_start = None
+        self.auto_sleep = False  # Track if sleep was automatic (from 0% energy)
 
         # stats
         self.last_update = datetime.datetime.now()
@@ -67,41 +74,92 @@ class Pet:
         Update fullness and energy based on elapsed time.
         Fullness decreases over time (slower while sleeping).
         Energy decreases over time (but not while sleeping).
+        If energy hits 0%, pet automatically sleeps until energy reaches 10%.
         """
         now = datetime.datetime.now()
         elapsed_seconds = (now - self.last_update).total_seconds()
 
-        # Store old values to calculate when stats hit zero
+        # Store old fullness to calculate when it hit zero
         old_fullness = self.fullness
-        old_energy = self.energy
 
-        # Calculate fullness decrease (slower when sleeping)
-        fullness_multiplier = SLEEP_FULLNESS_MULTIPLIER if self.sleep else 1.0
-        fullness_change = (elapsed_seconds / FULLNESS_DECREASE_RATE) * fullness_multiplier
-        self.fullness -= fullness_change
+        # Handle time simulation in chunks if auto-sleep/wake might occur
+        remaining_time = elapsed_seconds
+        current_time = self.last_update
 
-        # Only decrease energy if pet is not sleeping
-        if not self.sleep:
-            energy_change = elapsed_seconds / ENERGY_DECREASE_RATE
-            self.energy -= energy_change
+        while remaining_time > 0:
+            # Calculate fullness decrease (slower when sleeping)
+            fullness_multiplier = SLEEP_FULLNESS_MULTIPLIER if self.sleep else 1.0
+            fullness_change = (remaining_time / FULLNESS_DECREASE_RATE) * fullness_multiplier
+            new_fullness = self.fullness - fullness_change
 
-        # Calculate when fullness hit zero (if it did)
+            # Calculate energy change
+            if self.sleep:
+                # Restore energy while sleeping
+                energy_change = remaining_time / SLEEP_RESTORATION_RATE
+                new_energy = self.energy + energy_change
+            else:
+                # Decrease energy while awake
+                energy_change = remaining_time / ENERGY_DECREASE_RATE
+                new_energy = self.energy - energy_change
+
+            # Check if energy will hit 0% (need to auto-sleep)
+            if not self.sleep and new_energy <= MIN_STAT and self.energy > MIN_STAT:
+                # Calculate time until energy hits 0
+                energy_rate = 1.0 / ENERGY_DECREASE_RATE
+                time_to_zero = self.energy / energy_rate
+
+                # Process time until auto-sleep
+                self.fullness -= (time_to_zero / FULLNESS_DECREASE_RATE)
+                self.energy = MIN_STAT
+                self.energy_zero_since = current_time + datetime.timedelta(seconds=time_to_zero)
+
+                # Auto-sleep
+                self.sleep = True
+                self.auto_sleep = True
+                self.sleep_start = current_time + datetime.timedelta(seconds=time_to_zero)
+
+                # Continue with remaining time
+                remaining_time -= time_to_zero
+                current_time = self.sleep_start
+                continue
+
+            # Check if energy will reach wake threshold while sleeping (need to auto-wake)
+            # Auto-wake at 10% if auto-sleep, or at 100% if manual sleep
+            wake_threshold = 10.0 if self.auto_sleep else MAX_STAT
+            if self.sleep and new_energy >= wake_threshold and self.energy < wake_threshold:
+                # Calculate time until energy reaches wake threshold
+                energy_needed = wake_threshold - self.energy
+                time_to_wake = energy_needed * SLEEP_RESTORATION_RATE
+
+                # Process time until auto-wake
+                self.fullness -= (time_to_wake / FULLNESS_DECREASE_RATE) * SLEEP_FULLNESS_MULTIPLIER
+                self.energy = wake_threshold
+                self.energy_zero_since = None
+
+                # Auto-wake
+                self.sleep = False
+                self.auto_sleep = False
+                self.sleep_start = None
+
+                # Continue with remaining time
+                remaining_time -= time_to_wake
+                current_time += datetime.timedelta(seconds=time_to_wake)
+                continue
+
+            # No state change needed, apply full remaining time
+            self.fullness = new_fullness
+            self.energy = new_energy
+            break
+
+        # Calculate when fullness hit zero (if it did during this update)
         if old_fullness > MIN_STAT and self.fullness <= MIN_STAT:
             # Calculate how long ago fullness hit zero
-            fullness_rate = 1.0 / (FULLNESS_DECREASE_RATE * fullness_multiplier)  # points per second
+            fullness_multiplier = SLEEP_FULLNESS_MULTIPLIER if self.sleep else 1.0
+            fullness_rate = 1.0 / (FULLNESS_DECREASE_RATE * fullness_multiplier)
             seconds_to_zero = old_fullness / fullness_rate
             self.fullness_zero_since = self.last_update + datetime.timedelta(seconds=seconds_to_zero)
         elif self.fullness > MIN_STAT:
             self.fullness_zero_since = None
-
-        # Calculate when energy hit zero (if it did)
-        if not self.sleep and old_energy > MIN_STAT and self.energy <= MIN_STAT:
-            # Calculate how long ago energy hit zero
-            energy_rate = 1.0 / ENERGY_DECREASE_RATE  # points per second
-            seconds_to_zero = old_energy / energy_rate
-            self.energy_zero_since = self.last_update + datetime.timedelta(seconds=seconds_to_zero)
-        elif self.energy > MIN_STAT:
-            self.energy_zero_since = None
 
         # Cap the stat values
         self.fullness = max(MIN_STAT, min(MAX_STAT, self.fullness))
@@ -122,6 +180,7 @@ class Pet:
         """
         # Set sleep properties
         self.sleep = True
+        self.auto_sleep = False  # Manual sleep
         self.sleep_start = datetime.datetime.now()
         return True
     
@@ -147,6 +206,7 @@ class Pet:
 
         # Clear sleep properties
         self.sleep = False
+        self.auto_sleep = False
         self.sleep_start = None
 
         # Return success status
@@ -187,9 +247,11 @@ class Pet:
         """Convert pet to dictionary for saving"""
         return {
             'name': self.name,
+            'owner': self.owner,
             'birthday': self.birthday.isoformat(),
             'age': self.age,
             'sleep': self.sleep,
+            'auto_sleep': self.auto_sleep,
             'sleep_start': self.sleep_start.isoformat() if self.sleep_start else None,
             'last_update': self.last_update.isoformat(),
             'fullness': self.fullness,
@@ -200,7 +262,7 @@ class Pet:
 
 
     def __str__(self):
-        result = f"Name: {self.name}\nAge: {self.age}\nFullness: {int(self.fullness)}%\nEnergy: {int(self.energy)}%\nStatus: {'Sleeping' if self.sleep else 'Awake'}"
+        result = f"Name: {self.name}\nAge: {self.age}\nFullness: {int(self.fullness)}%\nEnergy: {'Sleeping' if self.sleep else (str(int(self.energy))+ '%')}"
 
         # Add time at 0% for fullness
         if self.fullness_zero_since is not None:
@@ -247,7 +309,8 @@ class Pet:
             raise KeyError("Missing required field: 'fullness' (or legacy 'hunger')")
 
         # Validate and create pet (name validation happens in __init__)
-        pet = cls(data['name'])
+        owner = data.get('owner', None)  # Get owner if it exists, None for backward compatibility
+        pet = cls(data['name'], owner)
 
         # Validate and set birthday
         if not isinstance(data['birthday'], str):
@@ -268,6 +331,14 @@ class Pet:
         if not isinstance(data['sleep'], bool):
             raise TypeError("sleep must be a boolean")
         pet.sleep = data['sleep']
+
+        # Validate auto_sleep (optional for backward compatibility)
+        if 'auto_sleep' in data:
+            if not isinstance(data['auto_sleep'], bool):
+                raise TypeError("auto_sleep must be a boolean")
+            pet.auto_sleep = data['auto_sleep']
+        else:
+            pet.auto_sleep = False  # Default to False for old save files
 
         # Validate sleep_start
         if 'sleep_start' in data and data['sleep_start'] is not None:
