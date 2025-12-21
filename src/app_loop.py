@@ -26,11 +26,11 @@ def initialize_pet(user, pet_filename=None):
         # Specific pet file was requested
         filename = os.path.join(PETS_PATH, pet_filename)
         # Add to user's collection if not already there
-        if pet_filename not in user.pets:
+        if not any(pet['filename'] == pet_filename for pet in user.pets):
             user.add_pet(pet_filename)
             save_user(user)
     elif user.current_pet:
-        # Load user's current pet
+        # Load user's current pet (current_pet is now a filename)
         pet_filename = user.current_pet
         filename = os.path.join(PETS_PATH, user.current_pet)
 
@@ -52,8 +52,8 @@ def initialize_pet(user, pet_filename=None):
                 filename = os.path.join(PETS_PATH, pet_filename)
 
             # Add pet to user's collection
-            if pet_filename not in user.pets:
-                user.add_pet(pet_filename)
+            if not any(p['filename'] == pet_filename for p in user.pets):
+                user.add_pet(pet_filename, pet.name)
                 save_user(user)
 
             return pet, filename
@@ -66,8 +66,8 @@ def initialize_pet(user, pet_filename=None):
         filename = os.path.join(PETS_PATH, pet_filename)
 
         # Add pet to user's collection
-        if pet_filename not in user.pets:
-            user.add_pet(pet_filename)
+        if not any(p['filename'] == pet_filename for p in user.pets):
+            user.add_pet(pet_filename, pet.name)
             save_user(user)
 
         return pet, filename
@@ -176,6 +176,28 @@ def handle_wake_up(pet):
         return True
 
 
+def handle_user_display(user):
+    """
+    Handle the user settings sub-menu.
+
+    Args:
+        user (User): The current user
+
+    Returns:
+        bool: False if user wants to exit the game, True otherwise
+    """
+    print("\n" + "-" * 50)
+    print(f"Username: {user.username}")
+    print(f"Birthday: {user.birthday}")
+    current_pet_name = user.get_current_pet_name()
+    print(f"Current pet: {current_pet_name if current_pet_name else 'None'}")
+    print(f"Total pets owned: {len(user.pets)}")
+    pet_names = [pet['name'] for pet in user.pets]
+    print(f"Pets: {', '.join(pet_names) if pet_names else 'None'}")
+    print("-" * 50)
+    return True
+
+
 def run_game_loop(user, pet, pet_filename):
     """
     Run the main game loop.
@@ -185,6 +207,13 @@ def run_game_loop(user, pet, pet_filename):
         pet (Pet): The pet being cared for
         pet_filename (str): The filename to save the pet to
     """
+    if user.is_birthday_today():
+        print()
+        print("*" * 50)
+        print("It's your birthday!")
+        print(f"{(pet.name)} wishes you a happy birthday!")
+        print("*" * 50)
+
     while True:
         display_action_menu()
 
@@ -203,6 +232,10 @@ def run_game_loop(user, pet, pet_filename):
         elif user_input == 4:
             handle_wake_up(pet)
         elif user_input == 5:
+            print("Games coming soon!")
+        elif user_input == 6:
+            handle_user_display(user)
+        elif user_input == 7:
             print("=" * 50)
             save_pet(pet, pet_filename)
             save_user(user)

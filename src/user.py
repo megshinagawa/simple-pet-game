@@ -8,8 +8,8 @@ class User:
     Attributes:
         username (str): The user's username
         birthday (datetime.date): The user's birthday
-        pets (list): List of pet filenames owned by this user
-        current_pet (str | None): Currently active pet filename
+        pets (list): List of pet dictionaries with 'name' and 'filename' keys
+        current_pet (str | None): Currently active pet's filename (e.g., 'fluffy_cat.json')
     """
 
     def __init__(self, username, birthday=None):
@@ -40,14 +40,17 @@ class User:
         self.current_login_streak = 1
 
         # Pet ownership tracking
-        self.pets = []  # List of pet filenames
-        self.current_pet = None  # Currently active pet
+        # Each pet entry is a dict: {'name': str, 'filename': str}
+        self.pets = []  # List of pet dictionaries
+        self.current_pet = None  # Currently active pet filename
 
-    def add_pet(self, pet_filename):
+    def add_pet(self, pet_filename, pet_name=None):
         """
         Add a pet to this user's collection.
         Args:
-            pet_filename (str): Filename of the pet to add
+            pet_filename (str): Filename of the pet to add (e.g., 'fluffy_cat.json')
+            pet_name (str, optional): Display name of the pet. If not provided,
+                                     derived from filename by removing .json and replacing _ with spaces
         """
         if not isinstance(pet_filename, str):
             raise TypeError("Pet filename must be a string")
@@ -55,8 +58,14 @@ class User:
             raise ValueError("Pet filename cannot be empty")
 
         pet_filename = pet_filename.strip()
-        if pet_filename not in self.pets:
-            self.pets.append(pet_filename)
+
+        # Derive pet name from filename if not provided
+        if pet_name is None:
+            pet_name = pet_filename.replace('.json', '').replace('_', ' ')
+
+        # Check if pet already exists (by filename)
+        if not any(pet['filename'] == pet_filename for pet in self.pets):
+            self.pets.append({'name': pet_name, 'filename': pet_filename})
             # Set as current pet if it's the first one
             if self.current_pet is None:
                 self.current_pet = pet_filename
@@ -67,11 +76,12 @@ class User:
         Args:
             pet_filename (str): Filename of the pet to remove
         """
-        if pet_filename in self.pets:
-            self.pets.remove(pet_filename)
-            # Clear current pet if it was the one removed
-            if self.current_pet == pet_filename:
-                self.current_pet = self.pets[0] if self.pets else None
+        # Find and remove pet by filename
+        self.pets = [pet for pet in self.pets if pet['filename'] != pet_filename]
+
+        # Clear current pet if it was the one removed
+        if self.current_pet == pet_filename:
+            self.current_pet = self.pets[0]['filename'] if self.pets else None
 
     def set_current_pet(self, pet_filename):
         """
@@ -79,9 +89,45 @@ class User:
         Args:
             pet_filename (str): Filename of the pet to set as current
         """
-        if pet_filename not in self.pets:
-            raise ValueError(f"Pet '{pet_filename}' is not owned by this user")
+        if not any(pet['filename'] == pet_filename for pet in self.pets):
+            raise ValueError(f"Pet with filename '{pet_filename}' is not owned by this user")
         self.current_pet = pet_filename
+
+    def get_current_pet_name(self):
+        """
+        Get the display name of the current pet.
+        Returns:
+            str | None: The pet's display name, or None if no current pet
+        """
+        if self.current_pet is None:
+            return None
+        for pet in self.pets:
+            if pet['filename'] == self.current_pet:
+                return pet['name']
+        return None
+
+    def get_pet_name(self, pet_filename):
+        """
+        Get the display name for a given pet filename.
+        Args:
+            pet_filename (str): The pet's filename
+        Returns:
+            str | None: The pet's display name, or None if not found
+        """
+        for pet in self.pets:
+            if pet['filename'] == pet_filename:
+                return pet['name']
+        return None
+
+    def is_birthday_today(self):
+        """
+        Check if today is the user's birthday.
+        Returns:
+            bool: True if today is the user's birthday, False otherwise
+        """
+        today = datetime.datetime.now().date()
+        return (today.month == self.birthday.month and
+                today.day == self.birthday.day)
 
     def update_login_streak(self, last_login_date):
         """
@@ -137,11 +183,31 @@ class User:
         if 'pets' in data:
             if not isinstance(data['pets'], list):
                 raise TypeError("pets must be a list")
-            user.pets = data['pets']
+
+            # Handle old format (list of strings) vs new format (list of dicts)
+            if data['pets'] and isinstance(data['pets'][0], str):
+                # Old format: convert pet names to dict format
+                user.pets = [
+                    {
+                        'name': pet_name,
+                        'filename': f"{pet_name.lower().replace(' ', '_')}.json"
+                    }
+                    for pet_name in data['pets']
+                ]
+            else:
+                # New format: already list of dicts
+                user.pets = data['pets']
 
         # Load current pet (with backward compatibility)
         if 'current_pet' in data:
-            user.current_pet = data['current_pet']
+            current_pet_value = data['current_pet']
+            # Check if it's in old format (pet name) or new format (filename)
+            if current_pet_value and not current_pet_value.endswith('.json'):
+                # Old format: convert pet name to filename
+                user.current_pet = f"{current_pet_value.lower().replace(' ', '_')}.json"
+            else:
+                # New format: already a filename
+                user.current_pet = current_pet_value
 
         # Load login streak data (with backward compatibility)
         if 'first_login_date' in data:
@@ -168,4 +234,5 @@ class User:
         age = (datetime.datetime.now().date() - self.birthday).days // 365
         pet_count = len(self.pets)
         days_since_first = (datetime.datetime.now().date() - self.first_login_date).days
-        return f"Username: {self.username}\nAge: {age}\nPets owned: {pet_count}\nCurrent pet: {self.current_pet or 'None'}\nCurrent streak: {self.current_login_streak} days\nLongest streak: {self.longest_login_streak} days\nDays since first login: {days_since_first}"
+        current_pet_display = self.get_current_pet_name() or 'None'
+        return f"Username: {self.username}\nAge: {age}\nPets owned: {pet_count}\nCurrent pet: {current_pet_display}\nCurrent streak: {self.current_login_streak} days\nLongest streak: {self.longest_login_streak} days\nDays since first login: {days_since_first}"

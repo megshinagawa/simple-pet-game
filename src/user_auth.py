@@ -15,15 +15,14 @@ def show_login_streak_message(user, streak_continued, days_since):
         days_since (int): Days since last login
     """
     if days_since == 0:
-        print(f"You've already logged in today! Current streak: {user.current_login_streak} days")
+        print(f"Current streak: {user.current_login_streak} days")
     elif streak_continued:
-        print(f"Login streak continues! Current streak: {user.current_login_streak} days")
+        print(f"Login streak updated! Current streak: {user.current_login_streak} days")
         if user.current_login_streak == user.longest_login_streak:
-            print("New record!")
+            print(">> New record!")
     else:
-        print(f"Streak broken! You missed {days_since - 1} day(s). Starting fresh: {user.current_login_streak} day")
-        if user.longest_login_streak > 1:
-            print(f"Your longest streak was: {user.longest_login_streak} days")
+        print("Glad to have you back!")
+        print(f">> It's been {days_since - 1} day(s) since your last login!")
 
 
 def create_new_user(username):
@@ -67,8 +66,7 @@ def login_existing_user(username):
     streak_continued, days_since = loaded_user.update_login_streak(loaded_user.last_login_date)
     loaded_user.last_login_date = loaded_user.birthday.today()
 
-    age = (loaded_user.birthday.today() - loaded_user.birthday).days // 365
-    print(f"Welcome back, {loaded_user.username}! (Age: {age})")
+    print(f"Welcome back, {loaded_user.username}!")
 
     # Show streak message
     show_login_streak_message(loaded_user, streak_continued, days_since)

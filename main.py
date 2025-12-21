@@ -1,11 +1,8 @@
 """
 Simple Pet Game - Main entry point.
-
-A command-line virtual pet game where you care for your pet by feeding it
-and managing its sleep schedule.
 """
 import sys
-from src.auth import authenticate_user
+from src.user_auth import authenticate_user
 from src.app_loop import initialize_pet, run_game_loop
 from src.ui import display_welcome
 from src.data_handler import save_user
