@@ -13,7 +13,9 @@ def display_action_menu():
     print("2. Feed pet")
     print("3. Go to bed")
     print("4. Wake up")
-    print("5. Save and exit")
+    print("5. Play games")
+    print("6. Check user info")
+    print("7. Save and exit")
     print("=" * 50)
 
 
