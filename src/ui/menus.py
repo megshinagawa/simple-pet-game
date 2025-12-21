@@ -44,3 +44,15 @@ def display_pet_status(pet):
     print("=" * 50)
     print(pet)
     print("=" * 50)
+
+
+def display_game_menu():
+    """Display game menu"""
+    print("\n" + "=" * 50)
+    print("GAMES")
+    print("=" * 50)
+    print("1. Which Way?")
+    print("2. Memory")
+    print("3. Coming soon!")
+    print("4. Back to main menu")
+    print("=" * 50)

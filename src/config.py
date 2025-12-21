@@ -33,3 +33,7 @@ FOODS = {
     2: {"name": "Tomato", "fill_value": 15},
     3: {"name": "Candy", "fill_value": 5}
 }
+
+# Games
+TOTAL_GAME_COUNT = 5
+DIRECTIONS = {'l': 'left', 'r': 'right'}
