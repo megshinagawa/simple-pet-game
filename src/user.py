@@ -255,6 +255,13 @@ class User:
         if 'current_login_streak' in data:
             user.current_login_streak = data['current_login_streak']
 
+        # Load game stats (with backward compatibility)
+        if 'games_played' in data:
+            user.games_played = data['games_played']
+
+        if 'games_won' in data:
+            user.games_won = data['games_won']
+
         return user
 
     def __str__(self):
